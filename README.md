@@ -170,8 +170,6 @@ BUY 1,000,000 EURUSD at 1.0850
     └── vite.config.js
 ```
 
-> Note: if `RedisStore.cs` or `ExecutionService.cs` still exists and is empty, those files are unused placeholders. The current MVP talks to Redis directly through services, and execution logic lives in `TradeService`.
-
 ---
 
 ## Architecture Overview
@@ -388,7 +386,7 @@ trades
 position:EURUSD
 ```
 
-See [Redis Data Model](docs/Redis-Data-Model.md) for details.
+See [Redis Data Model](../../wiki/Redis-Data-Model) for details.
 
 ---
 
@@ -406,7 +404,7 @@ The simulator demonstrates:
 - unrealized P&L
 - simple risk limits
 
-See [Trading Concepts](docs/Trading-Concepts.md) for a full explanation.
+See [Trading Concepts](../../wiki/Trading-Concepts) for a full explanation.
 
 ---
 
@@ -450,7 +448,7 @@ The project can use GitHub Actions for:
 - CI: backend build, frontend build, Docker Compose build
 - CD: publish backend and frontend images to GitHub Container Registry
 
-See [CI/CD](docs/CI-CD.md) for workflow notes.
+See [CI/CD](../../wiki/CI-CD) for workflow notes.
 
 ---
 
