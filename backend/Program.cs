@@ -1,12 +1,13 @@
-using System.Text.Json;
-using EfxSimulator.Api.Models;
 using EfxSimulator.Api.Services;
 using StackExchange.Redis;
+using EfxSimulator.Api.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddSignalR();
 
 var redisConnectionString =
     builder.Configuration["Redis:ConnectionString"] ?? "localhost:6379";
@@ -16,70 +17,31 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
 
 builder.Services.AddHostedService<PriceGeneratorService>();
 
+builder.Services.AddScoped<QuoteService>();
+builder.Services.AddScoped<TradeService>();
+builder.Services.AddSingleton<PositionService>();
+builder.Services.AddScoped<RiskService>();
+
+
 var app = builder.Build();
 
 app.UseSwagger();
 app.UseSwaggerUI();
 
-app.MapGet("/", () => Results.Ok(new
-{
-    service = "EfxSimulator.Api",
-    status = "running"
-}));
+app.MapControllers();
+
+app.MapHub<PriceHub>("/hubs/prices");
 
 app.MapGet("/health", async (IConnectionMultiplexer redis) =>
 {
-    try
-    {
-        var db = redis.GetDatabase();
-        await db.PingAsync();
-
-        return Results.Ok(new
-        {
-            status = "ok",
-            redis = "connected"
-        });
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem(
-            title: "Health check failed",
-            detail: ex.Message,
-            statusCode: 503
-        );
-    }
-});
-
-app.MapGet("/api/prices", async (IConnectionMultiplexer redis) =>
-{
     var db = redis.GetDatabase();
+    await db.PingAsync();
 
-    var pairs = new[]
+    return Results.Ok(new
     {
-        "EURUSD",
-        "GBPUSD",
-        "USDJPY",
-        "EURGBP"
-    };
-
-    var prices = new Dictionary<string, FxPrice?>();
-
-    foreach (var pair in pairs)
-    {
-        var json = await db.StringGetAsync($"price:{pair}");
-
-        if (json.HasValue)
-        {
-            var price = JsonSerializer.Deserialize<FxPrice>(json!);
-            prices[pair] = price;
-        }
-        else
-        {
-            prices[pair] = null;
-        }
-    }
-
-    return Results.Ok(prices);
+        status = "ok",
+        redis = "connected"
+    });
 });
 
 app.Run();

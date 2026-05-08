@@ -1,13 +1,17 @@
 using System.Text.Json;
 using EfxSimulator.Api.Models;
 using StackExchange.Redis;
+using EfxSimulator.Api.Hubs;
+using Microsoft.AspNetCore.SignalR;
 
 namespace EfxSimulator.Api.Services;
 
-public sealed class PriceGeneratorService : BackgroundService
+public sealed class PriceGeneratorService : BackgroundService // no other class can inherit. BackgroundService runs as a long-lived hosted service in ASP.NET
 {
     private readonly IConnectionMultiplexer _redis;
     private readonly ILogger<PriceGeneratorService> _logger;
+    private readonly IHubContext<PriceHub> _priceHub;
+    private readonly PositionService _positionService;
     private readonly Random _random = new();
 
     private readonly Dictionary<string, decimal> _midPrices = new()
@@ -20,10 +24,14 @@ public sealed class PriceGeneratorService : BackgroundService
 
     public PriceGeneratorService(
         IConnectionMultiplexer redis,
-        ILogger<PriceGeneratorService> logger)
+        ILogger<PriceGeneratorService> logger,
+        IHubContext<PriceHub> priceHub,
+        PositionService positionService)
     {
         _redis = redis;
         _logger = logger;
+        _priceHub = priceHub;
+        _positionService = positionService;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -34,6 +42,8 @@ public sealed class PriceGeneratorService : BackgroundService
 
         while (!stoppingToken.IsCancellationRequested)
         {
+            var prices = new Dictionary<string, FxPrice>();
+
             foreach (var pair in _midPrices.Keys.ToList())
             {
                 var price = GenerateNextPrice(pair);
@@ -42,11 +52,32 @@ public sealed class PriceGeneratorService : BackgroundService
                 var json = JsonSerializer.Serialize(price);
 
                 await db.StringSetAsync(redisKey, json);
+
+                var historyKey = $"pricehistory:{pair}";
+                await db.ListRightPushAsync(historyKey, json);
+                await db.ListTrimAsync(historyKey, -120, -1);
+
+                prices[pair] = price;
             }
 
+            await _priceHub.Clients.All.SendAsync(
+                "pricesUpdated",
+                prices,
+                stoppingToken);
+            
+            var positions = await _positionService.GetAllPositionsAsync();
+
+            if (positions.Count > 0)
+            {
+                await _priceHub.Clients.All.SendAsync(
+                    "positionsUpdated",
+                    positions,
+                    stoppingToken);
+            }
+            
             await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
         }
-
+        
         _logger.LogInformation("Price generator service stopped.");
     }
 

@@ -1,5 +1,5 @@
-namespace EfxSimulator.Api.Models
-{
+namespace EfxSimulator.Api.Models;
+
     public sealed class FxPrice
     {
         public required string Pair { get; init; }
@@ -14,4 +14,3 @@ namespace EfxSimulator.Api.Models
 
         public DateTime TimestampUtc { get; init; } = DateTime.UtcNow;
     }
-}
