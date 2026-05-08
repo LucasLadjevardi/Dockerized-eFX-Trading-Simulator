@@ -29,10 +29,6 @@ This project is intended as a learning and portfolio project for understanding c
 
 ## Documentation
 
-The README is the quick-start entry point. More detailed documentation lives in the `docs/` folder and can also be copied into a GitHub Wiki.
-
-Recommended docs:
-
 - [Home](../../wiki)
 - [Getting Started](../../wiki/Getting-Started)
 - [Architecture](../../wiki/Architecture)
