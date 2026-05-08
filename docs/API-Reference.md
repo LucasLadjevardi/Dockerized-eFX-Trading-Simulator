@@ -1,0 +1,139 @@
+# API Reference
+
+The backend exposes REST endpoints for prices, quotes, trades, and positions.
+
+Base URL when running locally:
+
+```text
+http://localhost:8080
+```
+
+When calling from the frontend, use relative URLs through Nginx:
+
+```text
+/api/...
+```
+
+## Health
+
+```http
+GET /health
+```
+
+Returns backend and Redis connectivity status.
+
+## Prices
+
+```http
+GET /api/prices
+```
+
+Returns the latest prices for supported pairs.
+
+```http
+GET /api/prices/history/{pair}
+```
+
+Returns recent price history for charting.
+
+Example:
+
+```http
+GET /api/prices/history/EURUSD
+```
+
+## Quotes
+
+```http
+POST /api/quotes
+```
+
+Creates a temporary quote.
+
+Request:
+
+```json
+{
+  "pair": "EURUSD",
+  "side": "BUY",
+  "amount": 1000000
+}
+```
+
+Notes:
+
+- `pair` is a six-letter FX pair symbol.
+- `side` must be `BUY` or `SELL`.
+- `amount` is interpreted as base currency amount.
+- `BUY` quotes use ask price.
+- `SELL` quotes use bid price.
+
+Example response:
+
+```json
+{
+  "quoteId": "q-example",
+  "pair": "EURUSD",
+  "side": "BUY",
+  "amount": 1000000,
+  "price": 1.0852,
+  "createdAtUtc": "2026-05-08T12:00:00Z",
+  "expiresAtUtc": "2026-05-08T12:00:30Z"
+}
+```
+
+## Trades
+
+```http
+POST /api/trades
+```
+
+Executes a quote.
+
+Request:
+
+```json
+{
+  "quoteId": "q-example"
+}
+```
+
+Possible outcomes:
+
+- filled trade
+- rejected because quote expired or does not exist
+- rejected by risk rules
+
+```http
+GET /api/trades
+```
+
+Returns recent trades.
+
+## Positions
+
+```http
+GET /api/positions
+```
+
+Returns all open positions.
+
+```http
+GET /api/positions/{pair}
+```
+
+Returns the position for a specific pair.
+
+Example:
+
+```http
+GET /api/positions/EURUSD
+```
+
+## Swagger
+
+Swagger UI is available at:
+
+```text
+http://localhost:8080/swagger
+```
