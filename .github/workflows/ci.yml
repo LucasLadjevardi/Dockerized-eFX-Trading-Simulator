@@ -7,6 +7,10 @@ on:
       - main
       - master
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   backend:
     name: Backend build
@@ -31,7 +35,7 @@ jobs:
       - name: Build backend
         run: dotnet build --configuration Release --no-restore
 
-      # Add later || TO DO: create tests:
+      # TODO: Add backend tests later
       # - name: Test backend
       #   run: dotnet test --configuration Release --no-build
 

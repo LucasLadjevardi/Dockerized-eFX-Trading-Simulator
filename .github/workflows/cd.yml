@@ -24,7 +24,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set lowercase image owner
-        run: echo "IMAGE_OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
+        id: image_owner
+        shell: bash
+        run: |
+          echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -43,8 +46,8 @@ jobs:
           file: ./backend/Dockerfile
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/efx-simulator-backend:latest
-            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/efx-simulator-backend:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ steps.image_owner.outputs.owner }}/efx-simulator-backend:latest
+            ${{ env.REGISTRY }}/${{ steps.image_owner.outputs.owner }}/efx-simulator-backend:${{ github.sha }}
 
       - name: Build and push frontend image
         uses: docker/build-push-action@v6
@@ -53,5 +56,5 @@ jobs:
           file: ./frontend/Dockerfile
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/efx-simulator-frontend:latest
-            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/efx-simulator-frontend:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ steps.image_owner.outputs.owner }}/efx-simulator-frontend:latest
+            ${{ env.REGISTRY }}/${{ steps.image_owner.outputs.owner }}/efx-simulator-frontend:${{ github.sha }}
