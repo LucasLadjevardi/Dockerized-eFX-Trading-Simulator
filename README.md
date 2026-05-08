@@ -33,18 +33,18 @@ The README is the quick-start entry point. More detailed documentation lives in 
 
 Recommended docs:
 
-- [Home](docs/Home.md)
-- [Getting Started](docs/Getting-Started.md)
-- [Architecture](docs/Architecture.md)
-- [Backend Overview](docs/Backend-Overview.md)
-- [Frontend Overview](docs/Frontend-Overview.md)
-- [Trading Concepts](docs/Trading-Concepts.md)
-- [API Reference](docs/API-Reference.md)
-- [Redis Data Model](docs/Redis-Data-Model.md)
-- [SignalR Streaming](docs/SignalR-Streaming.md)
-- [CI/CD](docs/CI-CD.md)
-- [Troubleshooting](docs/Troubleshooting.md)
-- [Roadmap](docs/Roadmap.md)
+- [Home](../../wiki)
+- [Getting Started](../../wiki/Getting-Started)
+- [Architecture](../../wiki/Architecture)
+- [Backend Overview](../../wiki/Backend-Overview)
+- [Frontend Overview](../../wiki/Frontend-Overview)
+- [Trading Concepts](../../wiki/Trading-Concepts)
+- [API Reference](../../wiki/API-Reference)
+- [Redis Data Model](../../wiki/Redis-Data-Model)
+- [SignalR Streaming](../../wiki/SignalR-Streaming)
+- [CI/CD](../../wiki/CI-CD)
+- [Troubleshooting](../../wiki/Troubleshooting)
+- [Roadmap](../../wiki/Roadmap)
 
 ---
 
