@@ -108,7 +108,7 @@ The simulator records:
 
 ## Positions
 
-A position tracks net exposure for a pair.
+A position tracks net exposure for a pair within a portfolio.
 
 ```text
 BUY EURUSD  -> positive EUR base position
@@ -136,6 +136,24 @@ EURUSD P&L is shown in USD
 USDJPY P&L is shown in JPY
 EURGBP P&L is shown in GBP
 ```
+
+## Realized P&L
+
+Realized P&L is booked when a trade reduces, closes, or flips an existing position.
+
+For a long position, selling part of the position realizes:
+
+```text
+Closed Base Amount x (Execution Price - Average Price)
+```
+
+For a short position, buying part of the position realizes:
+
+```text
+Closed Base Amount x (Average Price - Execution Price)
+```
+
+The simulator stores cumulative realized P&L on the position and realized P&L for each filled trade.
 
 ## Shorting
 

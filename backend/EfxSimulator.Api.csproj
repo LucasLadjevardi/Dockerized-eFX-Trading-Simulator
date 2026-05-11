@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="StackExchange.Redis" Version="2.8.24" />
+    <PackageReference Include="Npgsql" Version="9.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" />
     <PackageReference Include="AspNetCore.HealthChecks.Redis" Version="8.0.1" />

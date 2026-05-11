@@ -1,11 +1,12 @@
 # Architecture
 
-The simulator is split into three Docker services:
+The simulator is split into four Docker services:
 
 ```text
 frontend  -> React app served by Nginx
 backend   -> ASP.NET Core API and SignalR hub
 redis     -> in-memory state store
+postgres  -> durable trade store
 ```
 
 ## High-level flow
@@ -30,8 +31,9 @@ ASP.NET Core Backend
     |-- PositionService
     |-- RiskService
     |-- PriceHub
-    v
-Redis
+    |
+    |-- Redis: prices, quotes, positions, locks
+    `-- PostgreSQL: durable trade history
 ```
 
 ## Frontend responsibilities
@@ -42,7 +44,7 @@ The frontend:
 - displays price charts
 - allows users to request quotes
 - allows users to execute quotes
-- displays positions and unrealized P&L
+- displays positions, unrealized P&L, and realized P&L
 - displays trade history
 - connects to SignalR for live updates
 
@@ -55,8 +57,8 @@ The backend:
 - creates temporary executable quotes
 - atomically claims executable quotes
 - applies pre-trade risk checks
-- records executed trades
-- updates positions
+- records executed trades in PostgreSQL
+- updates portfolio-scoped positions
 - streams live prices and positions using SignalR
 
 ## Execution flow
@@ -66,15 +68,15 @@ Quote execution is handled by `ExecutionService`.
 When a user executes a quote, the backend:
 
 - reads the quote to determine its currency pair
-- acquires a Redis lock for that pair
+- acquires a Redis lock for that portfolio and pair
 - acquires a portfolio-level Redis lock for cross-pair risk checks
 - atomically claims the quote using Redis get-and-delete semantics
 - rejects the request if the quote is expired, missing, or already used
 - evaluates pre-trade risk rules against the projected portfolio
+- applies the position update and calculates realized P&L
 - records the trade
-- applies the position update
 
-The per-pair lock prevents lost updates for the same pair. The portfolio lock protects risk checks that aggregate across pairs and currencies.
+The per-portfolio, per-pair lock prevents lost updates for the same pair within a portfolio. The portfolio lock protects risk checks that aggregate across pairs and currencies.
 
 ## Redis responsibilities
 
@@ -83,12 +85,36 @@ Redis stores fast-moving simulator state:
 - latest prices
 - price history
 - temporary quotes with expiry
-- trades
-- trade ID list
 - positions
 - short-lived execution locks
 
-Redis is being used as a simple in-memory store for the MVP. In a production-style system, trades would normally also be written to durable storage.
+Redis uses append-only persistence in Docker Compose so simulator state can survive container restarts.
+
+## PostgreSQL responsibilities
+
+PostgreSQL stores durable trade history:
+
+- trade IDs
+- portfolio IDs
+- quote IDs
+- pair and side
+- base and quote currencies
+- base and quote amounts
+- execution price
+- realized P&L
+- status
+- execution timestamp
+
+## Docker health checks
+
+Docker health checks are configured for all runtime services:
+
+- frontend checks the Nginx HTTP endpoint
+- backend checks `/health`
+- Redis uses `redis-cli ping`
+- PostgreSQL uses `pg_isready`
+
+The frontend waits for a healthy backend, and the backend waits for healthy Redis and PostgreSQL services.
 
 ## Docker networking
 
@@ -98,6 +124,12 @@ For example, the backend connects to Redis using:
 
 ```text
 redis:6379
+```
+
+and to PostgreSQL using:
+
+```text
+postgres:5432
 ```
 
 Nginx proxies API calls to:

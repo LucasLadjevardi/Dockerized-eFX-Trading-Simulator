@@ -2,7 +2,7 @@
 
 Welcome to the project documentation for the **Dockerized eFX Trading Simulator**.
 
-This project is a Dockerized electronic foreign exchange trading simulator built with **ASP.NET Core**, **React**, **SignalR**, **Redis**, **Nginx**, and **Docker Compose**.
+This project is a Dockerized electronic foreign exchange trading simulator built with **ASP.NET Core**, **React**, **SignalR**, **Redis**, **PostgreSQL**, **Nginx**, and **Docker Compose**.
 
 It simulates a simplified eFX workflow:
 
@@ -13,8 +13,10 @@ simulated market prices
   -> quote expiry
   -> atomic trade execution
   -> pre-trade risk checks
+  -> durable trade storage
   -> position updates
   -> unrealized P&L
+  -> realized P&L
 ```
 
 The project is intended for learning, portfolio demonstration, and understanding how trading-style applications can be structured.

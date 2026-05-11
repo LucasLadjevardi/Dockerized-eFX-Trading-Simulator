@@ -8,9 +8,9 @@ namespace EfxSimulator.Api.Controllers;
 [Route("api/[controller]")]
 public sealed class PricesController : ControllerBase
 {
-    private readonly RedisStore _redis;
+    private readonly IRedisStore _redis;
 
-    public PricesController(RedisStore redis)
+    public PricesController(IRedisStore redis)
     {
         _redis = redis;
     }

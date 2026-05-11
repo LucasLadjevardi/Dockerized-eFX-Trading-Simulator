@@ -4,6 +4,8 @@ public sealed class Trade
 {
     public required string TradeId { get; init; }
 
+    public string PortfolioId { get; init; } = PortfolioIds.Default;
+
     public required string QuoteId { get; init; }
 
     public required string Pair { get; init; }
@@ -19,6 +21,8 @@ public sealed class Trade
     public decimal QuoteAmount { get; init; }
 
     public decimal Price { get; init; }
+
+    public decimal RealizedPnl { get; init; }
 
     public required string Status { get; init; }
 

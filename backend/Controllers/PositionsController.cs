@@ -16,16 +16,19 @@ public sealed class PositionsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<Position>>> GetPositions()
+    public async Task<ActionResult<List<Position>>> GetPositions(
+        [FromHeader(Name = "X-Portfolio-Id")] string? portfolioId)
     {
-        var positions = await _positionService.GetAllPositionsAsync();
+        var positions = await _positionService.GetAllPositionsAsync(portfolioId);
         return Ok(positions);
     }
 
     [HttpGet("{pair}")]
-    public async Task<ActionResult<Position>> GetPosition(string pair)
+    public async Task<ActionResult<Position>> GetPosition(
+        string pair,
+        [FromHeader(Name = "X-Portfolio-Id")] string? portfolioId)
     {
-        var position = await _positionService.GetPositionAsync(pair);
+        var position = await _positionService.GetPositionAsync(pair, portfolioId);
 
         if (position is null)
         {

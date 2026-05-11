@@ -2,6 +2,8 @@ namespace EfxSimulator.Api.Models;
 
 public sealed class Position
 {
+    public string PortfolioId { get; init; } = PortfolioIds.Default;
+
     public required string Pair { get; init; }
 
     public required string BaseCurrency { get; init; }
@@ -15,6 +17,8 @@ public sealed class Position
     public decimal CurrentPrice { get; init; }
 
     public decimal UnrealizedPnl { get; init; }
+
+    public decimal RealizedPnl { get; init; }
 
     public required string PnlCurrency { get; init; }
 

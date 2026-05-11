@@ -1,20 +1,14 @@
 using EfxSimulator.Api.Infrastructure;
 using EfxSimulator.Api.Models;
+using EfxSimulator.Api.Options;
+using Microsoft.Extensions.Options;
 
 namespace EfxSimulator.Api.Services;
 
 public sealed class RiskService
 {
-    private readonly RedisStore _redis;
+    private readonly IRedisStore _redis;
     private readonly IReadOnlyList<IPreTradeRiskRule> _rules;
-
-    private const decimal MaxSingleTradeSize = 2_000_000m;
-    private const decimal MaxPairNetExposure = 5_000_000m;
-    private const decimal MaxCurrencyExposureUsd = 7_500_000m;
-    private const decimal MaxGrossNotionalUsd = 15_000_000m;
-    private const decimal MaxUnrealizedLossUsd = 100_000m;
-
-    private static readonly TimeSpan MaxMarketPriceAge = TimeSpan.FromSeconds(5);
 
     private static readonly string[] SupportedPairs =
     {
@@ -24,17 +18,23 @@ public sealed class RiskService
         "EURGBP"
     };
 
-    public RiskService(RedisStore redis)
+    public RiskService(
+        IRedisStore redis,
+        IOptions<RiskLimitsOptions> riskLimits)
     {
         _redis = redis;
+        var limits = riskLimits.Value;
+        var maxMarketPriceAge = TimeSpan.FromSeconds(
+            Math.Max(1, limits.MaxMarketPriceAgeSeconds));
+
         _rules = new IPreTradeRiskRule[]
         {
-            new SingleTradeSizeRule(MaxSingleTradeSize),
-            new MarketDataFreshnessRule(MaxMarketPriceAge),
-            new PairExposureRule(MaxPairNetExposure),
-            new CurrencyExposureRule(MaxCurrencyExposureUsd),
-            new GrossNotionalRule(MaxGrossNotionalUsd),
-            new LossLimitRule(MaxUnrealizedLossUsd)
+            new SingleTradeSizeRule(limits.MaxSingleTradeSize),
+            new MarketDataFreshnessRule(maxMarketPriceAge),
+            new PairExposureRule(limits.MaxPairNetExposure),
+            new CurrencyExposureRule(limits.MaxCurrencyExposureUsd),
+            new GrossNotionalRule(limits.MaxGrossNotionalUsd),
+            new LossLimitRule(limits.MaxUnrealizedLossUsd)
         };
     }
 
@@ -58,7 +58,7 @@ public sealed class RiskService
     private async Task<RiskCheckContext> BuildRiskContextAsync(Quote quote)
     {
         var pricesByPair = await LoadPricesAsync();
-        var positionsByPair = await LoadPositionsAsync();
+        var positionsByPair = await LoadPositionsAsync(quote.PortfolioId);
         var projectedPairNetBaseAmounts = BuildProjectedPairNetBaseAmounts(
             positionsByPair,
             quote);
@@ -121,14 +121,15 @@ public sealed class RiskService
         return prices;
     }
 
-    private async Task<Dictionary<string, Position>> LoadPositionsAsync()
+    private async Task<Dictionary<string, Position>> LoadPositionsAsync(
+        string portfolioId)
     {
         var positions = new Dictionary<string, Position>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var pair in SupportedPairs)
         {
             var position = await _redis.GetJsonAsync<Position>(
-                RedisKeys.Position(pair));
+                RedisKeys.Position(portfolioId, pair));
 
             if (position is not null)
             {

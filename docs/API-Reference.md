@@ -14,13 +14,21 @@ When calling from the frontend, use relative URLs through Nginx:
 /api/...
 ```
 
+Portfolio-scoped endpoints accept an optional header:
+
+```http
+X-Portfolio-Id: alpha
+```
+
+If the header is omitted, the backend uses the `default` portfolio.
+
 ## Health
 
 ```http
 GET /health
 ```
 
-Returns backend and Redis connectivity status.
+Returns backend, Redis, and PostgreSQL connectivity status.
 
 ## Prices
 
@@ -48,7 +56,7 @@ GET /api/prices/history/EURUSD
 POST /api/quotes
 ```
 
-Creates a temporary quote.
+Creates a temporary quote for the requested portfolio.
 
 Request:
 
@@ -74,6 +82,7 @@ Example response:
 ```json
 {
   "quoteId": "q-example",
+  "portfolioId": "default",
   "pair": "EURUSD",
   "side": "BUY",
   "amount": 1000000,
@@ -108,11 +117,15 @@ Possible outcomes:
 
 Quote execution is single-use. The backend atomically claims the quote before filling a trade, so retrying the same `quoteId` returns a rejection after the first successful execution.
 
+The `X-Portfolio-Id` header must match the portfolio that created the quote.
+
 ```http
 GET /api/trades
 ```
 
-Returns recent trades.
+Returns recent trades from PostgreSQL for the requested portfolio.
+
+Filled trades include `portfolioId` and `realizedPnl`.
 
 ## Positions
 
@@ -120,13 +133,15 @@ Returns recent trades.
 GET /api/positions
 ```
 
-Returns all open positions.
+Returns all open positions for the requested portfolio.
+
+Positions include unrealized and cumulative realized P&L.
 
 ```http
 GET /api/positions/{pair}
 ```
 
-Returns the position for a specific pair.
+Returns the position for a specific pair in the requested portfolio.
 
 Example:
 

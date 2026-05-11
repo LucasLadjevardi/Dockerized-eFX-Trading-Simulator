@@ -5,7 +5,7 @@ namespace EfxSimulator.Api.Services;
 
 public sealed class PositionService
 {
-    private readonly RedisStore _redis;
+    private readonly IRedisStore _redis;
 
     private static readonly string[] SupportedPairs =
     {
@@ -15,14 +15,15 @@ public sealed class PositionService
         "EURGBP"
     };
 
-    public PositionService(RedisStore redis)
+    public PositionService(IRedisStore redis)
     {
         _redis = redis;
     }
 
-    public async Task<Position> ApplyTradeAsync(Trade trade)
+    public async Task<PositionUpdateResult> ApplyTradeAsync(Trade trade)
     {
-        var positionKey = RedisKeys.Position(trade.Pair);
+        var portfolioId = PortfolioIds.Normalize(trade.PortfolioId);
+        var positionKey = RedisKeys.Position(portfolioId, trade.Pair);
         var existingPosition = await _redis.GetJsonAsync<Position>(positionKey);
 
         var signedBaseAmount = trade.Side == "BUY"
@@ -31,8 +32,14 @@ public sealed class PositionService
 
         var oldNetBaseAmount = existingPosition?.NetBaseAmount ?? 0m;
         var oldAveragePrice = existingPosition?.AveragePrice ?? 0m;
+        var oldRealizedPnl = existingPosition?.RealizedPnl ?? 0m;
 
         var newNetBaseAmount = oldNetBaseAmount + signedBaseAmount;
+        var realizedPnl = CalculateRealizedPnl(
+            oldNetBaseAmount,
+            oldAveragePrice,
+            signedBaseAmount,
+            trade.Price);
 
         var newAveragePrice = CalculateAveragePrice(
             oldNetBaseAmount,
@@ -49,6 +56,7 @@ public sealed class PositionService
 
         var newPosition = new Position
         {
+            PortfolioId = portfolioId,
             Pair = trade.Pair,
             BaseCurrency = trade.BaseCurrency,
             QuoteCurrency = trade.QuoteCurrency,
@@ -56,22 +64,30 @@ public sealed class PositionService
             AveragePrice = newAveragePrice,
             CurrentPrice = currentPrice,
             UnrealizedPnl = unrealizedPnl,
+            RealizedPnl = oldRealizedPnl + realizedPnl,
             PnlCurrency = trade.QuoteCurrency,
             UpdatedAtUtc = DateTime.UtcNow
         };
 
         await _redis.SetJsonAsync(positionKey, newPosition);
 
-        return newPosition;
+        return new PositionUpdateResult
+        {
+            Position = newPosition,
+            RealizedPnl = realizedPnl,
+            PnlCurrency = trade.QuoteCurrency
+        };
     }
 
-    public async Task<List<Position>> GetAllPositionsAsync()
+    public async Task<List<Position>> GetAllPositionsAsync(
+        string? portfolioId = null)
     {
+        var normalizedPortfolioId = PortfolioIds.Normalize(portfolioId);
         var positions = new List<Position>();
 
         foreach (var pair in SupportedPairs)
         {
-            var position = await GetPositionAsync(pair);
+            var position = await GetPositionAsync(pair, normalizedPortfolioId);
 
             if (position is not null)
             {
@@ -84,10 +100,18 @@ public sealed class PositionService
 
     public async Task<Position?> GetPositionAsync(string pair)
     {
+        return await GetPositionAsync(pair, PortfolioIds.Default);
+    }
+
+    public async Task<Position?> GetPositionAsync(
+        string pair,
+        string? portfolioId)
+    {
         pair = pair.ToUpperInvariant();
+        var normalizedPortfolioId = PortfolioIds.Normalize(portfolioId);
 
         var position = await _redis.GetJsonAsync<Position>(
-            RedisKeys.Position(pair));
+            RedisKeys.Position(normalizedPortfolioId, pair));
 
         if (position is null)
         {
@@ -103,6 +127,7 @@ public sealed class PositionService
 
         var refreshedPosition = new Position
         {
+            PortfolioId = normalizedPortfolioId,
             Pair = position.Pair,
             BaseCurrency = position.BaseCurrency,
             QuoteCurrency = position.QuoteCurrency,
@@ -110,6 +135,7 @@ public sealed class PositionService
             AveragePrice = position.AveragePrice,
             CurrentPrice = currentPrice,
             UnrealizedPnl = unrealizedPnl,
+            RealizedPnl = position.RealizedPnl,
             PnlCurrency = position.QuoteCurrency,
             UpdatedAtUtc = DateTime.UtcNow
         };
@@ -151,6 +177,28 @@ public sealed class PositionService
         }
 
         return oldAveragePrice;
+    }
+
+    private static decimal CalculateRealizedPnl(
+        decimal oldNetBaseAmount,
+        decimal oldAveragePrice,
+        decimal signedBaseAmount,
+        decimal tradePrice)
+    {
+        if (oldNetBaseAmount == 0m ||
+            oldAveragePrice == 0m ||
+            Math.Sign(oldNetBaseAmount) == Math.Sign(signedBaseAmount))
+        {
+            return 0m;
+        }
+
+        var closedBaseAmount = Math.Min(
+            Math.Abs(oldNetBaseAmount),
+            Math.Abs(signedBaseAmount));
+
+        return closedBaseAmount *
+            (tradePrice - oldAveragePrice) *
+            Math.Sign(oldNetBaseAmount);
     }
 
     private static decimal CalculateUnrealizedPnl(

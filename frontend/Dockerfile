@@ -39,6 +39,9 @@ USER nginx
 # Note: The default NGINX container now listens on port 8080 instead of 80 
 EXPOSE 8080
 
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD wget -qO- http://localhost:8080/ >/dev/null || exit 1
+
 # Start Nginx directly with custom config
 ENTRYPOINT ["nginx", "-c", "/etc/nginx/nginx.conf"]
 CMD ["-g", "daemon off;"]

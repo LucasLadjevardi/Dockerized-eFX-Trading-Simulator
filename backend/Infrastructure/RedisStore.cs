@@ -1,9 +1,45 @@
+using EfxSimulator.Api.Models;
 using System.Text.Json;
 using StackExchange.Redis;
 
 namespace EfxSimulator.Api.Infrastructure;
 
-public sealed class RedisStore
+public interface IRedisStore
+{
+    Task<T?> GetJsonAsync<T>(string key);
+
+    Task<T?> GetAndDeleteJsonAsync<T>(string key);
+
+    Task<bool> SetJsonAsync<T>(
+        string key,
+        T value,
+        TimeSpan? expiry = null);
+
+    Task<List<T>> ListRangeJsonAsync<T>(
+        string key,
+        long start = 0,
+        long stop = -1);
+
+    Task<List<string>> ListRangeAsync(
+        string key,
+        long start = 0,
+        long stop = -1);
+
+    Task<long> ListLeftPushAsync(string key, string value);
+
+    Task<long> ListRightPushJsonAsync<T>(string key, T value);
+
+    Task ListTrimAsync(string key, long start, long stop);
+
+    Task<bool> TryAcquireLockAsync(
+        string key,
+        string lockValue,
+        TimeSpan expiry);
+
+    Task<bool> ReleaseLockAsync(string key, string lockValue);
+}
+
+public sealed class RedisStore : IRedisStore
 {
     private readonly IDatabase _database;
 
@@ -116,19 +152,27 @@ public sealed class RedisStore
 
 public static class RedisKeys
 {
-    public const string Trades = "trades";
-
     public static string Price(string pair) => $"price:{pair}";
 
     public static string PriceHistory(string pair) => $"pricehistory:{pair}";
 
     public static string Quote(string quoteId) => $"quote:{quoteId}";
 
-    public static string Trade(string tradeId) => $"trade:{tradeId}";
+    public static string Position(string pair) =>
+        Position(PortfolioIds.Default, pair);
 
-    public static string Position(string pair) => $"position:{pair}";
+    public static string Position(string portfolioId, string pair) =>
+        $"portfolio:{PortfolioIds.Normalize(portfolioId)}:position:{pair}";
 
-    public static string PairExecutionLock(string pair) => $"lock:execution:pair:{pair}";
+    public static string PairExecutionLock(string pair) =>
+        PairExecutionLock(PortfolioIds.Default, pair);
 
-    public static string PortfolioRiskLock() => "lock:execution:portfolio-risk";
+    public static string PairExecutionLock(string portfolioId, string pair) =>
+        $"lock:execution:portfolio:{PortfolioIds.Normalize(portfolioId)}:pair:{pair}";
+
+    public static string PortfolioRiskLock() =>
+        PortfolioRiskLock(PortfolioIds.Default);
+
+    public static string PortfolioRiskLock(string portfolioId) =>
+        $"lock:execution:portfolio:{PortfolioIds.Normalize(portfolioId)}:risk";
 }

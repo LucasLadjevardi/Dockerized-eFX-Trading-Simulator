@@ -7,7 +7,7 @@ namespace EfxSimulator.Api.Services;
 
 public sealed class PriceGeneratorService : BackgroundService // no other class can inherit. BackgroundService runs as a long-lived hosted service in ASP.NET
 {
-    private readonly RedisStore _redis;
+    private readonly IRedisStore _redis;
     private readonly ILogger<PriceGeneratorService> _logger;
     private readonly IHubContext<PriceHub> _priceHub;
     private readonly PositionService _positionService;
@@ -22,7 +22,7 @@ public sealed class PriceGeneratorService : BackgroundService // no other class 
     };
 
     public PriceGeneratorService(
-        RedisStore redis,
+        IRedisStore redis,
         ILogger<PriceGeneratorService> logger,
         IHubContext<PriceHub> priceHub,
         PositionService positionService)

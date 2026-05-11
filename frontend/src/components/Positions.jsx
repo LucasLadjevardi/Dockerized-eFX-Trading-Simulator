@@ -43,6 +43,7 @@ export default function PositionsTable({ positions }) {
                 <th>Average Price</th>
                 <th>Current Price</th>
                 <th>Unrealized P&amp;L</th>
+                <th>Realized P&amp;L</th>
                 <th>P&amp;L CCY</th>
                 <th>Updated UTC</th>
               </tr>
@@ -58,6 +59,9 @@ export default function PositionsTable({ positions }) {
                   <td>{formatNumber(position.currentPrice)}</td>
                   <td className={getPnlClass(position.unrealizedPnl)}>
                     {formatPnl(position.unrealizedPnl, position.pnlCurrency)}
+                  </td>
+                  <td className={getPnlClass(position.realizedPnl)}>
+                    {formatPnl(position.realizedPnl, position.pnlCurrency)}
                   </td>
                   <td>{position.pnlCurrency}</td>
                   <td>{position.updatedAtUtc}</td>

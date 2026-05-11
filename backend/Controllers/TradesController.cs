@@ -20,11 +20,15 @@ public sealed class TradesController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<Trade>> ExecuteTrade([FromBody] TradeRequest request)
+    public async Task<ActionResult<Trade>> ExecuteTrade(
+        [FromBody] TradeRequest request,
+        [FromHeader(Name = "X-Portfolio-Id")] string? portfolioId)
     {
         try
         {
-            var trade = await _executionService.ExecuteTradeAsync(request);
+            var trade = await _executionService.ExecuteTradeAsync(
+                request,
+                portfolioId);
             return Ok(trade);
         }
         catch (ArgumentException ex)
@@ -45,9 +49,10 @@ public sealed class TradesController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<Trade>>> GetTrades()
+    public async Task<ActionResult<List<Trade>>> GetTrades(
+        [FromHeader(Name = "X-Portfolio-Id")] string? portfolioId)
     {
-        var trades = await _tradeService.GetLatestTradesAsync();
+        var trades = await _tradeService.GetLatestTradesAsync(portfolioId);
         return Ok(trades);
     }
 }

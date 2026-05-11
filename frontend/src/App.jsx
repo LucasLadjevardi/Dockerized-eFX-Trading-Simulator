@@ -7,6 +7,8 @@ import QuotePanel from "./components/QuotePanel.jsx";
 import PositionsTable from "./components/Positions.jsx";
 import TradeHistory from "./components/TradeHistory.jsx";
 import PriceChart from "./components/PriceChart.jsx";
+import PortfolioPnlChart from "./components/PortfolioPnlChart.jsx";
+import ExposureSummaryCards from "./components/ExposureSummaryCards.jsx";
 
 import {
   executeTrade,
@@ -121,8 +123,14 @@ export default function App() {
     if (activeView === "dashboard") {
       return (
         <>
+          <ExposureSummaryCards positions={positions} />
+
           <div className="card">
             <PriceChart livePrices={prices} />
+          </div>
+
+          <div className="card">
+            <PortfolioPnlChart positions={positions} />
           </div>
 
           <div className="card">
@@ -149,9 +157,19 @@ export default function App() {
 
     if (activeView === "positions") {
       return (
-        <div className="card">
-          <PositionsTable positions={positions} />
-        </div>
+        <>
+          <ExposureSummaryCards positions={positions} />
+
+          <div className="grid-2">
+            <div className="card">
+              <PortfolioPnlChart positions={positions} />
+            </div>
+
+            <div className="card">
+              <PositionsTable positions={positions} />
+            </div>
+          </div>
+        </>
       );
     }
 
@@ -165,8 +183,14 @@ export default function App() {
 
     return (
       <>
+        <ExposureSummaryCards positions={positions} />
+
         <div className="card">
           <PriceChart livePrices={prices} />
+        </div>
+
+        <div className="card">
+          <PortfolioPnlChart positions={positions} />
         </div>
 
         <div className="card">

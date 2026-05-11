@@ -9,7 +9,7 @@ Install:
 - Docker
 - Docker Compose
 
-You do not need to install .NET, Node.js, Nginx, or Redis locally when using Docker.
+You do not need to install .NET, Node.js, Nginx, Redis, or PostgreSQL locally when using Docker.
 
 ## Clone the repository
 
@@ -41,6 +41,14 @@ Health:   http://localhost:8080/health
 docker compose down
 ```
 
+## Check service health
+
+Docker Compose health checks are configured for the frontend, backend, Redis, and PostgreSQL services.
+
+```bash
+docker compose ps
+```
+
 ## Rebuild commands
 
 Rebuild all services:
@@ -63,10 +71,18 @@ docker compose build backend --no-cache
 
 ## Clear Redis data
 
-Redis stores quotes, trades, positions, prices, and price history. To reset the simulator state:
+Redis stores quotes, positions, prices, price history, and execution locks. To reset Redis state:
 
 ```bash
 docker compose exec redis redis-cli FLUSHALL
+```
+
+## Clear PostgreSQL trades
+
+PostgreSQL stores durable trade history. To clear trades:
+
+```bash
+docker compose exec postgres psql -U efx -d efx_simulator -c "TRUNCATE TABLE trades;"
 ```
 
 ## Useful logs
@@ -75,4 +91,5 @@ docker compose exec redis redis-cli FLUSHALL
 docker compose logs frontend
 docker compose logs backend
 docker compose logs redis
+docker compose logs postgres
 ```

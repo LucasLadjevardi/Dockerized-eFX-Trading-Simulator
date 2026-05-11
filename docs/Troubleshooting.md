@@ -85,7 +85,7 @@ Quotes expire automatically. Execute quickly or increase the quote expiry time d
 
 Risk checks use the projected post-trade portfolio. A trade may be rejected because of trade size, pair exposure, currency exposure, gross notional, stale market prices, or the unrealized loss limit.
 
-If you are testing locally and want a clean state, clear Redis.
+If you are testing locally and want a clean state, clear Redis and clear PostgreSQL trades.
 
 ## Trade rejected because execution lock was not acquired
 
@@ -97,6 +97,12 @@ Clear Redis:
 
 ```bash
 docker compose exec redis redis-cli FLUSHALL
+```
+
+Clear PostgreSQL trades:
+
+```bash
+docker compose exec postgres psql -U efx -d efx_simulator -c "TRUNCATE TABLE trades;"
 ```
 
 ## P&L color not changing

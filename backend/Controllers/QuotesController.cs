@@ -16,11 +16,15 @@ public sealed class QuotesController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<Quote>> CreateQuote([FromBody] QuoteRequest request)
+    public async Task<ActionResult<Quote>> CreateQuote(
+        [FromBody] QuoteRequest request,
+        [FromHeader(Name = "X-Portfolio-Id")] string? portfolioId)
     {
         try
         {
-            var quote = await _quoteService.CreateQuoteAsync(request);
+            var quote = await _quoteService.CreateQuoteAsync(
+                request,
+                portfolioId);
             return Ok(quote);
         }
         catch (ArgumentException ex)

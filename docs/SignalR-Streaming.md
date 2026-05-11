@@ -46,7 +46,7 @@ Payload shape:
 
 ### positionsUpdated
 
-Broadcast when positions exist and are recalculated against latest prices.
+Broadcast when default-portfolio positions exist and are recalculated against latest prices. Position payloads include unrealized and realized P&L.
 
 ```text
 positionsUpdated

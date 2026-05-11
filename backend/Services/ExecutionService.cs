@@ -9,13 +9,13 @@ public sealed class ExecutionService
     private static readonly TimeSpan LockRetryDelay = TimeSpan.FromMilliseconds(25);
     private static readonly TimeSpan MaxLockWait = TimeSpan.FromSeconds(4);
 
-    private readonly RedisStore _redis;
+    private readonly IRedisStore _redis;
     private readonly TradeService _tradeService;
     private readonly PositionService _positionService;
     private readonly RiskService _riskService;
 
     public ExecutionService(
-        RedisStore redis,
+        IRedisStore redis,
         TradeService tradeService,
         PositionService positionService,
         RiskService riskService)
@@ -26,7 +26,9 @@ public sealed class ExecutionService
         _riskService = riskService;
     }
 
-    public async Task<Trade> ExecuteTradeAsync(TradeRequest request)
+    public async Task<Trade> ExecuteTradeAsync(
+        TradeRequest request,
+        string? portfolioId = null)
     {
         if (request is null)
         {
@@ -40,6 +42,7 @@ public sealed class ExecutionService
 
         var quoteKey = RedisKeys.Quote(request.QuoteId);
         var quotePreview = await _redis.GetJsonAsync<Quote>(quoteKey);
+        var normalizedPortfolioId = PortfolioIds.Normalize(portfolioId);
 
         if (quotePreview is null)
         {
@@ -52,11 +55,19 @@ public sealed class ExecutionService
             throw new InvalidOperationException("Quote expired");
         }
 
+        if (!quotePreview.PortfolioId.Equals(
+                normalizedPortfolioId,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                "Quote does not belong to the requested portfolio");
+        }
+
         var lockValue = Guid.NewGuid().ToString("N");
         var lockKeys = new[]
             {
-                RedisKeys.PairExecutionLock(quotePreview.Pair),
-                RedisKeys.PortfolioRiskLock()
+                RedisKeys.PairExecutionLock(quotePreview.PortfolioId, quotePreview.Pair),
+                RedisKeys.PortfolioRiskLock(quotePreview.PortfolioId)
             }
             .Order(StringComparer.Ordinal)
             .ToArray();
@@ -81,6 +92,14 @@ public sealed class ExecutionService
                 throw new InvalidOperationException("Quote expired");
             }
 
+            if (!quote.PortfolioId.Equals(
+                    normalizedPortfolioId,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    "Quote does not belong to the requested portfolio");
+            }
+
             var riskResult = await _riskService.CheckTradeAsync(quote);
 
             if (!riskResult.IsApproved)
@@ -94,6 +113,7 @@ public sealed class ExecutionService
             var trade = new Trade
             {
                 TradeId = $"t-{Guid.NewGuid():N}",
+                PortfolioId = quote.PortfolioId,
                 QuoteId = quote.QuoteId,
                 Pair = quote.Pair,
                 Side = quote.Side,
@@ -106,10 +126,27 @@ public sealed class ExecutionService
                 ExecutedAtUtc = DateTime.UtcNow
             };
 
-            await _tradeService.RecordTradeAsync(trade);
-            await _positionService.ApplyTradeAsync(trade);
+            var positionUpdate = await _positionService.ApplyTradeAsync(trade);
+            var recordedTrade = new Trade
+            {
+                TradeId = trade.TradeId,
+                PortfolioId = trade.PortfolioId,
+                QuoteId = trade.QuoteId,
+                Pair = trade.Pair,
+                Side = trade.Side,
+                BaseCurrency = trade.BaseCurrency,
+                QuoteCurrency = trade.QuoteCurrency,
+                BaseAmount = trade.BaseAmount,
+                QuoteAmount = trade.QuoteAmount,
+                Price = trade.Price,
+                RealizedPnl = positionUpdate.RealizedPnl,
+                Status = trade.Status,
+                ExecutedAtUtc = trade.ExecutedAtUtc
+            };
 
-            return trade;
+            await _tradeService.RecordTradeAsync(recordedTrade);
+
+            return recordedTrade;
         }
         finally
         {

@@ -4,6 +4,8 @@ public sealed class Quote
 {
     public required string QuoteId { get; init; }
 
+    public string PortfolioId { get; init; } = PortfolioIds.Default;
+
     public required string Pair { get; init; }
 
     public required string Side { get; init; }

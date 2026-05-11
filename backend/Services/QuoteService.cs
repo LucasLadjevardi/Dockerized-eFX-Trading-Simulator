@@ -7,14 +7,16 @@ public sealed class QuoteService
 {
     private static readonly TimeSpan QuoteLifetime = TimeSpan.FromSeconds(5);
 
-    private readonly RedisStore _redis;
+    private readonly IRedisStore _redis;
 
-    public QuoteService(RedisStore redis)
+    public QuoteService(IRedisStore redis)
     {
         _redis = redis;
     }
 
-    public async Task<Quote> CreateQuoteAsync(QuoteRequest request)
+    public async Task<Quote> CreateQuoteAsync(
+        QuoteRequest request,
+        string? portfolioId = null)
     {
         if (request is null)
         {
@@ -33,6 +35,7 @@ public sealed class QuoteService
 
         var pair = request.Pair.ToUpperInvariant();
         var side = request.Side.ToUpperInvariant();
+        var normalizedPortfolioId = PortfolioIds.Normalize(portfolioId);
 
         if (side is not "BUY" and not "SELL")
         {
@@ -60,6 +63,7 @@ public sealed class QuoteService
         var quote = new Quote
         {
             QuoteId = $"q-{Guid.NewGuid():N}",
+            PortfolioId = normalizedPortfolioId,
             Pair = pair,
             Side = side,
             Amount = request.Amount,
