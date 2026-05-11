@@ -11,8 +11,8 @@ simulated market prices
   -> live price streaming
   -> quote request
   -> quote expiry
-  -> trade execution
-  -> risk checks
+  -> atomic trade execution
+  -> pre-trade risk checks
   -> position updates
   -> unrealized P&L
 ```

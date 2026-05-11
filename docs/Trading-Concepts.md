@@ -40,7 +40,7 @@ sell USD equivalent
 If the price is `1.0850`, the quote amount is:
 
 ```text
-1,000,000 × 1.0850 = 1,085,000 USD
+1,000,000 x 1.0850 = 1,085,000 USD
 ```
 
 ## Bid and ask
@@ -87,6 +87,8 @@ A quote is a temporary executable price.
 
 The simulator stores quotes in Redis with an expiry time. If the user tries to execute after expiry, the trade is rejected.
 
+Quote execution is single-use. The backend atomically claims a quote before filling a trade, so the same quote cannot be executed twice.
+
 ## Trades
 
 A trade is created when a quote is executed successfully.
@@ -122,7 +124,7 @@ Negative net base amount means short.
 The simulator uses simplified unrealized P&L:
 
 ```text
-Unrealized P&L = Net Base Amount × (Current Price - Average Price)
+Unrealized P&L = Net Base Amount x (Current Price - Average Price)
 ```
 
 P&L is shown in the quote currency.
@@ -140,3 +142,18 @@ EURGBP P&L is shown in GBP
 The simulator allows selling even if the current position is zero. This creates a short position, which is common in institutional FX workflows.
 
 If you want a wallet-style simulator, add a risk rule that rejects sells larger than the current long balance.
+
+## Pre-trade risk
+
+Before a quote becomes a trade, the simulator evaluates pre-trade risk against the projected post-trade portfolio.
+
+The current rule set checks:
+
+- single trade size
+- stale or missing market prices
+- net exposure by currency pair
+- currency exposure converted to USD equivalent
+- gross notional exposure in USD
+- unrealized loss limit
+
+The simulator also uses execution locks so risk checks and position updates are evaluated against a consistent state.

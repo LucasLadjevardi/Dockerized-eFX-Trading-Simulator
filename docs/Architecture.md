@@ -25,6 +25,7 @@ ASP.NET Core Backend
     |
     |-- PriceGeneratorService
     |-- QuoteService
+    |-- ExecutionService
     |-- TradeService
     |-- PositionService
     |-- RiskService
@@ -52,11 +53,28 @@ The backend:
 - generates simulated FX prices
 - stores latest prices and price history in Redis
 - creates temporary executable quotes
-- validates quote execution
-- applies risk checks
+- atomically claims executable quotes
+- applies pre-trade risk checks
 - records executed trades
 - updates positions
 - streams live prices and positions using SignalR
+
+## Execution flow
+
+Quote execution is handled by `ExecutionService`.
+
+When a user executes a quote, the backend:
+
+- reads the quote to determine its currency pair
+- acquires a Redis lock for that pair
+- acquires a portfolio-level Redis lock for cross-pair risk checks
+- atomically claims the quote using Redis get-and-delete semantics
+- rejects the request if the quote is expired, missing, or already used
+- evaluates pre-trade risk rules against the projected portfolio
+- records the trade
+- applies the position update
+
+The per-pair lock prevents lost updates for the same pair. The portfolio lock protects risk checks that aggregate across pairs and currencies.
 
 ## Redis responsibilities
 
@@ -68,6 +86,7 @@ Redis stores fast-moving simulator state:
 - trades
 - trade ID list
 - positions
+- short-lived execution locks
 
 Redis is being used as a simple in-memory store for the MVP. In a production-style system, trades would normally also be written to durable storage.
 

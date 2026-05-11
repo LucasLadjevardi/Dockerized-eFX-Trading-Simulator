@@ -81,6 +81,16 @@ Confirm Nginx proxies `/hubs/`.
 
 Quotes expire automatically. Execute quickly or increase the quote expiry time during development.
 
+## Trade rejected by risk
+
+Risk checks use the projected post-trade portfolio. A trade may be rejected because of trade size, pair exposure, currency exposure, gross notional, stale market prices, or the unrealized loss limit.
+
+If you are testing locally and want a clean state, clear Redis.
+
+## Trade rejected because execution lock was not acquired
+
+Execution locks are short-lived and normally release automatically. This rejection can happen if a quote expires while waiting behind another execution. Request a fresh quote and try again.
+
 ## Old data after model changes
 
 Clear Redis:

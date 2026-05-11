@@ -1,6 +1,5 @@
-using System.Text.Json;
+using EfxSimulator.Api.Infrastructure;
 using EfxSimulator.Api.Models;
-using StackExchange.Redis;
 using EfxSimulator.Api.Hubs;
 using Microsoft.AspNetCore.SignalR;
 
@@ -8,7 +7,7 @@ namespace EfxSimulator.Api.Services;
 
 public sealed class PriceGeneratorService : BackgroundService // no other class can inherit. BackgroundService runs as a long-lived hosted service in ASP.NET
 {
-    private readonly IConnectionMultiplexer _redis;
+    private readonly RedisStore _redis;
     private readonly ILogger<PriceGeneratorService> _logger;
     private readonly IHubContext<PriceHub> _priceHub;
     private readonly PositionService _positionService;
@@ -23,7 +22,7 @@ public sealed class PriceGeneratorService : BackgroundService // no other class 
     };
 
     public PriceGeneratorService(
-        IConnectionMultiplexer redis,
+        RedisStore redis,
         ILogger<PriceGeneratorService> logger,
         IHubContext<PriceHub> priceHub,
         PositionService positionService)
@@ -36,8 +35,6 @@ public sealed class PriceGeneratorService : BackgroundService // no other class 
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var db = _redis.GetDatabase();
-
         _logger.LogInformation("Price generator service started.");
 
         while (!stoppingToken.IsCancellationRequested)
@@ -48,14 +45,11 @@ public sealed class PriceGeneratorService : BackgroundService // no other class 
             {
                 var price = GenerateNextPrice(pair);
 
-                var redisKey = $"price:{pair}";
-                var json = JsonSerializer.Serialize(price);
+                await _redis.SetJsonAsync(RedisKeys.Price(pair), price);
 
-                await db.StringSetAsync(redisKey, json);
-
-                var historyKey = $"pricehistory:{pair}";
-                await db.ListRightPushAsync(historyKey, json);
-                await db.ListTrimAsync(historyKey, -120, -1);
+                var historyKey = RedisKeys.PriceHistory(pair);
+                await _redis.ListRightPushJsonAsync(historyKey, price);
+                await _redis.ListTrimAsync(historyKey, -120, -1);
 
                 prices[pair] = price;
             }

@@ -67,6 +67,7 @@ Notes:
 - `amount` is interpreted as base currency amount.
 - `BUY` quotes use ask price.
 - `SELL` quotes use bid price.
+- Quotes expire quickly and must be executed before `expiresAtUtc`.
 
 Example response:
 
@@ -78,7 +79,7 @@ Example response:
   "amount": 1000000,
   "price": 1.0852,
   "createdAtUtc": "2026-05-08T12:00:00Z",
-  "expiresAtUtc": "2026-05-08T12:00:30Z"
+  "expiresAtUtc": "2026-05-08T12:00:05Z"
 }
 ```
 
@@ -101,8 +102,11 @@ Request:
 Possible outcomes:
 
 - filled trade
-- rejected because quote expired or does not exist
-- rejected by risk rules
+- rejected because the quote expired, was already used, or does not exist
+- rejected because an execution lock could not be acquired before quote expiry
+- rejected by pre-trade risk rules
+
+Quote execution is single-use. The backend atomically claims the quote before filling a trade, so retrying the same `quoteId` returns a rejection after the first successful execution.
 
 ```http
 GET /api/trades

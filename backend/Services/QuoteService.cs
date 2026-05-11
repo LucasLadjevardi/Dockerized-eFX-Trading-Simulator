@@ -1,21 +1,35 @@
-using System.Text.Json;
+using EfxSimulator.Api.Infrastructure;
 using EfxSimulator.Api.Models;
-using StackExchange.Redis;
 
 namespace EfxSimulator.Api.Services;
 
 public sealed class QuoteService
 {
-    private readonly IConnectionMultiplexer _redis;
+    private static readonly TimeSpan QuoteLifetime = TimeSpan.FromSeconds(5);
 
-    public QuoteService(IConnectionMultiplexer redis)
+    private readonly RedisStore _redis;
+
+    public QuoteService(RedisStore redis)
     {
         _redis = redis;
     }
 
     public async Task<Quote> CreateQuoteAsync(QuoteRequest request)
     {
-        var db = _redis.GetDatabase();
+        if (request is null)
+        {
+            throw new ArgumentException("Quote request is required");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Pair))
+        {
+            throw new ArgumentException("Pair is required");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Side))
+        {
+            throw new ArgumentException("Side is required");
+        }
 
         var pair = request.Pair.ToUpperInvariant();
         var side = request.Side.ToUpperInvariant();
@@ -30,23 +44,18 @@ public sealed class QuoteService
             throw new ArgumentException("Amount must be greater than zero");
         }
 
-        var priceJson = await db.StringGetAsync($"price:{pair}");
-
-        if (!priceJson.HasValue)
-        {
-            throw new InvalidOperationException($"No price available for {pair}");
-        }
-
-        var price = JsonSerializer.Deserialize<FxPrice>(priceJson!);
+        var price = await _redis.GetJsonAsync<FxPrice>(RedisKeys.Price(pair));
 
         if (price is null)
         {
-            throw new InvalidOperationException("Failed to deserialize price");
+            throw new InvalidOperationException($"No price available for {pair}");
         }
 
         var executablePrice = side == "BUY"
             ? price.Ask
             : price.Bid;
+
+        var now = DateTime.UtcNow;
 
         var quote = new Quote
         {
@@ -55,15 +64,14 @@ public sealed class QuoteService
             Side = side,
             Amount = request.Amount,
             Price = executablePrice,
-            ExpiresAtUtc = DateTime.UtcNow.AddSeconds(5)
+            CreatedAtUtc = now,
+            ExpiresAtUtc = now.Add(QuoteLifetime)
         };
 
-        var quoteJson = JsonSerializer.Serialize(quote);
-
-        await db.StringSetAsync(
-            $"quote:{quote.QuoteId}",
-            quoteJson,
-            expiry: TimeSpan.FromSeconds(20));
+        await _redis.SetJsonAsync(
+            RedisKeys.Quote(quote.QuoteId),
+            quote,
+            QuoteLifetime);
 
         return quote;
     }

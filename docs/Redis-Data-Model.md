@@ -11,6 +11,8 @@ quote:{quoteId}
 trade:{tradeId}
 trades
 position:{pair}
+lock:execution:pair:{pair}
+lock:execution:portfolio-risk
 ```
 
 ## Latest prices
@@ -40,11 +42,11 @@ Used by frontend charts.
 quote:{quoteId}
 ```
 
-Quotes are stored with Redis expiry.
+Quotes are stored with Redis expiry. The Redis TTL matches the quote's `expiresAtUtc` window.
 
-Once a quote expires, execution should return a rejection.
+Once a quote expires, execution returns a rejection.
 
-Once a quote is executed, the backend deletes the quote key to prevent double execution.
+When a quote is executed, the backend claims it with Redis get-and-delete semantics. This makes execution single-use even if two requests submit the same quote at nearly the same time.
 
 ## Trades
 
@@ -74,6 +76,19 @@ Positions store:
 - unrealized P&L
 - P&L currency
 - update timestamp
+
+## Execution locks
+
+```text
+lock:execution:pair:{pair}
+lock:execution:portfolio-risk
+```
+
+The backend uses short-lived Redis locks during execution.
+
+The pair lock protects position updates for one currency pair. The portfolio risk lock protects risk rules that aggregate exposure across pairs and currencies.
+
+Locks are released after execution completes and also have an expiry so they do not remain forever if the backend stops mid-request.
 
 ## Resetting Redis
 

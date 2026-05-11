@@ -8,10 +8,14 @@ namespace EfxSimulator.Api.Controllers;
 [Route("api/[controller]")]
 public sealed class TradesController : ControllerBase
 {
+    private readonly ExecutionService _executionService;
     private readonly TradeService _tradeService;
 
-    public TradesController(TradeService tradeService)
+    public TradesController(
+        ExecutionService executionService,
+        TradeService tradeService)
     {
+        _executionService = executionService;
         _tradeService = tradeService;
     }
 
@@ -20,7 +24,7 @@ public sealed class TradesController : ControllerBase
     {
         try
         {
-            var trade = await _tradeService.ExecuteTradeAsync(request);
+            var trade = await _executionService.ExecuteTradeAsync(request);
             return Ok(trade);
         }
         catch (ArgumentException ex)

@@ -35,9 +35,8 @@ jobs:
       - name: Build backend
         run: dotnet build --configuration Release --no-restore
 
-      # TODO: Add backend tests later
-      # - name: Test backend
-      #   run: dotnet test --configuration Release --no-build
+      - name: Test backend
+        run: dotnet test --configuration Release --no-build
 
   frontend:
     name: Frontend build

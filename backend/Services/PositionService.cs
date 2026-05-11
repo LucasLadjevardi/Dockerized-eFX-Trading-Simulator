@@ -1,12 +1,11 @@
-using System.Text.Json;
+using EfxSimulator.Api.Infrastructure;
 using EfxSimulator.Api.Models;
-using StackExchange.Redis;
 
 namespace EfxSimulator.Api.Services;
 
 public sealed class PositionService
 {
-    private readonly IConnectionMultiplexer _redis;
+    private readonly RedisStore _redis;
 
     private static readonly string[] SupportedPairs =
     {
@@ -16,24 +15,15 @@ public sealed class PositionService
         "EURGBP"
     };
 
-    public PositionService(IConnectionMultiplexer redis)
+    public PositionService(RedisStore redis)
     {
         _redis = redis;
     }
 
     public async Task<Position> ApplyTradeAsync(Trade trade)
     {
-        var db = _redis.GetDatabase();
-
-        var positionKey = $"position:{trade.Pair}";
-        var existingPositionJson = await db.StringGetAsync(positionKey);
-
-        Position? existingPosition = null;
-
-        if (existingPositionJson.HasValue)
-        {
-            existingPosition = JsonSerializer.Deserialize<Position>(existingPositionJson!);
-        }
+        var positionKey = RedisKeys.Position(trade.Pair);
+        var existingPosition = await _redis.GetJsonAsync<Position>(positionKey);
 
         var signedBaseAmount = trade.Side == "BUY"
             ? trade.BaseAmount
@@ -70,9 +60,7 @@ public sealed class PositionService
             UpdatedAtUtc = DateTime.UtcNow
         };
 
-        var newPositionJson = JsonSerializer.Serialize(newPosition);
-
-        await db.StringSetAsync(positionKey, newPositionJson);
+        await _redis.SetJsonAsync(positionKey, newPosition);
 
         return newPosition;
     }
@@ -96,18 +84,10 @@ public sealed class PositionService
 
     public async Task<Position?> GetPositionAsync(string pair)
     {
-        var db = _redis.GetDatabase();
-
         pair = pair.ToUpperInvariant();
 
-        var positionJson = await db.StringGetAsync($"position:{pair}");
-
-        if (!positionJson.HasValue)
-        {
-            return null;
-        }
-
-        var position = JsonSerializer.Deserialize<Position>(positionJson!);
+        var position = await _redis.GetJsonAsync<Position>(
+            RedisKeys.Position(pair));
 
         if (position is null)
         {
@@ -139,16 +119,7 @@ public sealed class PositionService
 
     private async Task<decimal> GetCurrentMidPriceAsync(string pair)
     {
-        var db = _redis.GetDatabase();
-
-        var priceJson = await db.StringGetAsync($"price:{pair}");
-
-        if (!priceJson.HasValue)
-        {
-            return 0m;
-        }
-
-        var price = JsonSerializer.Deserialize<FxPrice>(priceJson!);
+        var price = await _redis.GetJsonAsync<FxPrice>(RedisKeys.Price(pair));
 
         return price?.Mid ?? 0m;
     }

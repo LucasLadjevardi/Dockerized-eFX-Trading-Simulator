@@ -6,6 +6,8 @@ Potential future improvements for the simulator.
 
 - Add unit tests for quote, trade, risk, and position logic
 - Add integration tests with Redis
+- Add concurrency tests for quote execution and position updates
+- Move risk limits into configuration
 - Add durable trade storage with PostgreSQL
 - Add Redis persistence configuration
 - Add Docker health checks

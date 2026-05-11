@@ -1,6 +1,7 @@
 using EfxSimulator.Api.Services;
 using StackExchange.Redis;
 using EfxSimulator.Api.Hubs;
+using EfxSimulator.Api.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,11 +15,13 @@ var redisConnectionString =
 
 builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
     ConnectionMultiplexer.Connect(redisConnectionString));
+builder.Services.AddSingleton<RedisStore>();
 
 builder.Services.AddHostedService<PriceGeneratorService>();
 
 builder.Services.AddScoped<QuoteService>();
 builder.Services.AddScoped<TradeService>();
+builder.Services.AddScoped<ExecutionService>();
 builder.Services.AddSingleton<PositionService>();
 builder.Services.AddScoped<RiskService>();
 
